@@ -12,11 +12,11 @@ def load_subscriptions(path: str | Path) -> pd.DataFrame:
 
 
 def load_subscriptions_from_db(
-    conn_str: str,
+    db_path: str,
     as_of: Optional[date] = None,
 ) -> pd.DataFrame:
-    from engine.db import fetch_subscriptions  # deferred to avoid hard dep at import time
-    return fetch_subscriptions(conn_str, as_of=as_of)
+    from engine.db import fetch_subscriptions  # deferred import keeps sqlite3 optional
+    return fetch_subscriptions(db_path, as_of=as_of)
 
 
 def load_events(path: str | Path) -> pd.DataFrame:

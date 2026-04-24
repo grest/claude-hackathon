@@ -11,9 +11,9 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def clear_database_url(monkeypatch):
-    """Guarantee DATABASE_URL is absent so all tests use the CSV fallback."""
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+def clear_database_path(monkeypatch):
+    """Guarantee DATABASE_PATH is absent so all tests use the CSV fallback."""
+    monkeypatch.delenv("DATABASE_PATH", raising=False)
 
 
 def test_health():

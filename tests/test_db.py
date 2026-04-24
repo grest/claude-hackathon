@@ -1,37 +1,38 @@
 """
-Integration tests for engine/db.py.
-Requires a live Postgres connection. The entire module is skipped automatically
-when DATABASE_URL is not set — run `docker compose up -d` then set the env var.
+Integration tests for engine/db.py against AdventureWorks SQLite.
+Skipped automatically if the AdventureWorks CSV directory is not present.
 """
-import os
-from datetime import date
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+CSV_DIR = Path("data/AdventureWorks-oltp-install-script")
 
 pytestmark = pytest.mark.skipif(
-    not DATABASE_URL,
-    reason="DATABASE_URL not set — skipping DB integration tests",
+    not CSV_DIR.exists(),
+    reason="AdventureWorks CSV files not found — run from repo root",
 )
 
 
 @pytest.fixture(scope="module")
-def conn_str():
-    return DATABASE_URL
+def db_path(tmp_path_factory):
+    from db.init_db import build_db
+    out = tmp_path_factory.mktemp("aw") / "test.db"
+    build_db(CSV_DIR, out)
+    return str(out)
 
 
-def test_fetch_returns_dataframe(conn_str):
+def test_fetch_returns_dataframe(db_path):
     from engine.db import fetch_subscriptions
-    df = fetch_subscriptions(conn_str)
+    df = fetch_subscriptions(db_path)
     assert isinstance(df, pd.DataFrame)
     assert len(df) > 0
 
 
-def test_dtype_contract(conn_str):
+def test_dtype_contract(db_path):
     from engine.db import fetch_subscriptions
-    df = fetch_subscriptions(conn_str)
+    df = fetch_subscriptions(db_path)
     assert df["customer_id"].dtype == object
     assert df["plan"].dtype == object
     assert df["mrr"].dtype == "float64"
@@ -40,33 +41,39 @@ def test_dtype_contract(conn_str):
     assert df["status"].dtype == object
 
 
-def test_active_rows_have_nat_end_date(conn_str):
+def test_active_rows_have_nat_end_date(db_path):
     from engine.db import fetch_subscriptions
-    df = fetch_subscriptions(conn_str)
+    df = fetch_subscriptions(db_path)
     active = df[df["status"] == "active"]
     assert active["end_date"].isna().all()
 
 
-def test_churned_rows_have_end_date(conn_str):
+def test_churned_rows_have_end_date(db_path):
     from engine.db import fetch_subscriptions
-    df = fetch_subscriptions(conn_str)
+    df = fetch_subscriptions(db_path)
     churned = df[df["status"] == "churned"]
     assert churned["end_date"].notna().all()
 
 
-def test_seed_row_count(conn_str):
+def test_mrr_is_positive(db_path):
     from engine.db import fetch_subscriptions
-    df = fetch_subscriptions(conn_str)
-    assert len(df) == 8
+    df = fetch_subscriptions(db_path)
+    assert (df["mrr"] > 0).all()
 
 
-def test_api_endpoint_returns_db_source(conn_str):
-    import pytest
+def test_start_date_before_end_date(db_path):
+    from engine.db import fetch_subscriptions
+    df = fetch_subscriptions(db_path)
+    churned = df[df["status"] == "churned"]
+    assert (churned["start_date"] <= churned["end_date"]).all()
+
+
+def test_api_endpoint_returns_db_source(db_path):
     from fastapi.testclient import TestClient
     from engine.api import app
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setenv("DATABASE_URL", conn_str)
+        mp.setenv("DATABASE_PATH", db_path)
         client = TestClient(app)
         r = client.get("/metrics/customer_churn_rate", params={"as_of": "2024-05-01"})
 
