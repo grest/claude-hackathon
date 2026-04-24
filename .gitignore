@@ -1,0 +1,4 @@
+definitions/__pycache__/*.pyc
+engine/__pycache__/*.pyc
+tests/__pycache__/*.pyc
+
