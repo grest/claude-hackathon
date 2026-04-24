@@ -8,7 +8,11 @@
       "Bash(git -C /c/Repo/claude-hackathon show ef5bd8a:db/schema.sql)",
       "Bash(git -C /c/Repo/claude-hackathon show ef5bd8a:db/seed.sql)",
       "Bash(git -C /c/Repo/claude-hackathon show ef5bd8a:docker-compose.yml)",
-      "Bash(git -C /c/Repo/claude-hackathon show ef5bd8a:db/migrations/versions/001_initial_schema.py)"
+      "Bash(git -C /c/Repo/claude-hackathon show ef5bd8a:db/migrations/versions/001_initial_schema.py)",
+      "Bash(git -C c:/Repo/claude-hackathon status)",
+      "Bash(git -C c:/Repo/claude-hackathon remote -v)",
+      "Bash(git -C c:/Repo/claude-hackathon pull --no-rebase)",
+      "Bash(git -C c:/Repo/claude-hackathon push)"
     ]
   }
 }
