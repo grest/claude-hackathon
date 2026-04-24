@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Team Thunderbolts — One Number. One Definition.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #111111;
+    --paper: #f4f1ea;
+    --paper-deep: #ebe6dc;
+    --line: #1a1a1a;
+    --accent: #d64218;      /* vermillion — the "one number" color */
+    --accent-soft: #e87c5a;
+    --gold: #c9a449;
+    --muted: #6b645b;
+    --dim: #8a8178;
+    --green: #2d6a4f;
+    --yellow-tape: #f0c75e;
+    --grid: rgba(17,17,17,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 1px 1px, var(--grid) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  /* ---------- Layout primitives ---------- */
+  .slide {
+    min-height: 100vh;
+    padding: 80px clamp(32px, 6vw, 96px);
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .slide-meta {
+    position: absolute;
+    top: 24px;
+    left: clamp(32px, 6vw, 96px);
+    right: clamp(32px, 6vw, 96px);
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .slide-meta .num::before { content: "//"; margin-right: 8px; color: var(--accent); }
+
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: -0.02em; }
+  h1 { font-size: clamp(48px, 8vw, 120px); line-height: 0.95; }
+  h2 { font-size: clamp(36px, 5vw, 64px); line-height: 1.05; }
+  h3 { font-size: clamp(22px, 2.5vw, 32px); line-height: 1.2; }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: inline-block;
+  }
+  .eyebrow::before { content: "["; margin-right: 6px; }
+  .eyebrow::after { content: "]"; margin-left: 6px; }
+
+  /* ---------- Slide 1: Cover ---------- */
+  .cover {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr auto;
+    gap: 40px;
+    padding-top: 64px;
+  }
+  .cover-header {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 16px;
+  }
+  .bolt {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 22px;
+  }
+  .bolt span { color: var(--accent); }
+  .cover-title {
+    grid-column: 1 / -1;
+    align-self: center;
+    padding: 40px 0;
+  }
+  .cover-title h1 {
+    font-weight: 300;
+    font-style: italic;
+  }
+  .cover-title h1 strong {
+    font-weight: 900;
+    font-style: normal;
+    color: var(--accent);
+  }
+  .cover-title .tagline {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: clamp(20px, 2.2vw, 28px);
+    color: var(--muted);
+    margin-top: 32px;
+    max-width: 720px;
+    line-height: 1.3;
+  }
+  .cover-footer {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .team-list {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .team-member .name { font-weight: 700; }
+  .team-member .role { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* Cover decoration — bolt marks */
+  .strike {
+    position: absolute;
+    right: clamp(32px, 6vw, 96px);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 180px;
+    height: 360px;
+    pointer-events: none;
+  }
+  @media (max-width: 900px) { .strike { display: none; } }
+
+  /* ---------- Slide 2: The Problem ---------- */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 60px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .problem-grid { grid-template-columns: 1fr; } }
+
+  .four-answers {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 40px;
+    border-radius: 2px;
+    position: relative;
+    box-shadow: 8px 8px 0 var(--accent);
+  }
+  .four-answers::before {
+    content: "same data";
+    position: absolute;
+    top: -12px;
+    left: 24px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 2px 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid var(--line);
+  }
+  .answer-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: baseline;
+    padding: 14px 0;
+    border-bottom: 1px dashed rgba(244,241,234,0.2);
+  }
+  .answer-row:last-child { border-bottom: none; }
+  .answer-who {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    width: 110px;
+  }
+  .answer-what {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    color: #ddd;
+    font-style: italic;
+  }
+  .answer-num {
+    font-family: 'Fraunces', serif;
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--paper);
+  }
+  .answer-num.highlight { color: var(--accent-soft); }
+
+  .big-question {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(32px, 4vw, 56px);
+    line-height: 1.1;
+    margin-bottom: 24px;
+  }
+  .big-question .mark { color: var(--accent); font-weight: 900; font-style: normal; }
+
+  .problem-body { font-size: 17px; line-height: 1.7; color: var(--ink); max-width: 54ch; }
+  .problem-body p + p { margin-top: 16px; }
+
+  /* ---------- Slide 3: What We Built ---------- */
+  .built-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 48px;
+  }
+  @media (max-width: 900px) { .built-layout { grid-template-columns: 1fr; } }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stack-layer {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    position: relative;
+    transition: transform 0.2s;
+  }
+  .stack-layer:hover { transform: translateX(4px); }
+  .stack-layer .label { color: var(--muted); font-size: 10px; text-transform: uppercase; margin-bottom: 2px; }
+  .stack-layer .name { font-weight: 700; color: var(--ink); }
+  .stack-layer.anchor { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .stack-layer.anchor .label { color: var(--accent-soft); }
+  .stack-layer.anchor .name { color: var(--paper); }
+
+  .built-items { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 700px) { .built-items { grid-template-columns: 1fr; } }
+
+  .built-item {
+    border-left: 2px solid var(--ink);
+    padding: 8px 0 8px 20px;
+  }
+  .built-item.money-shot { border-left-color: var(--accent); border-left-width: 4px; }
+  .built-item .idx {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .built-item h3 { font-size: 22px; margin: 4px 0 8px; }
+  .built-item.money-shot h3 { color: var(--accent); }
+  .built-item p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+  /* ---------- Slide 4: Reconciliation (MONEY SHOT) ---------- */
+  .recon-slide { background: var(--paper-deep); }
+  .recon-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+  .recon-header .tag {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--paper);
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transform: rotate(-1.2deg);
+    margin-bottom: 12px;
+  }
+  .recon-totals {
+    display: flex;
+    gap: 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .recon-totals strong { color: var(--ink); font-size: 20px; display: block; margin-top: 4px; font-family: 'Fraunces', serif; font-weight: 700; }
+
+  .recon-table-wrap { overflow-x: auto; }
+  .recon-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+  }
+  .recon-table thead th {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 14px 12px;
+    text-align: left;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-right: 1px solid rgba(244,241,234,0.1);
+  }
+  .recon-table thead th.who { text-align: center; }
+  .recon-table thead th.who.v1 { background: var(--accent); }
+  .recon-table tbody td {
+    padding: 12px;
+    border-bottom: 1px dashed rgba(17,17,17,0.15);
+    border-right: 1px solid rgba(17,17,17,0.05);
+  }
+  .recon-table tbody td.who { text-align: center; font-weight: 700; }
+  .recon-table tbody tr:hover { background: rgba(214,66,24,0.04); }
+  .recon-table tbody tr:last-child td { border-bottom: 2px solid var(--ink); }
+
+  .mark-in { color: var(--green); font-weight: 700; }
+  .mark-out { color: var(--dim); }
+  .cell-rev { background: rgba(45,106,79,0.06); }
+  .cell-v1 { background: rgba(214,66,24,0.06); }
+  .cell-disagree { background: var(--yellow-tape); font-weight: 700; color: var(--ink); }
+
+  .recon-note {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .totals-row td {
+    background: var(--ink) !important;
+    color: var(--paper) !important;
+    font-family: 'Fraunces', serif !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    padding: 18px 12px !important;
+    border-bottom: none !important;
+  }
+  .totals-row td.label-cell {
+    font-size: 11px !important;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace !important;
+    color: var(--dim) !important;
+    font-weight: 500 !important;
+  }
+  .totals-row td.v1-result {
+    background: var(--accent) !important;
+    color: var(--paper) !important;
+  }
+
+  .why-differ {
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 900px) { .why-differ { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 500px) { .why-differ { grid-template-columns: 1fr; } }
+
+  .why-card {
+    border-top: 2px solid var(--ink);
+    padding-top: 12px;
+  }
+  .why-card .n { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.1em; }
+  .why-card h4 { font-family: 'Fraunces', serif; font-size: 17px; margin: 4px 0 6px; }
+  .why-card p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  /* ---------- Slide 5: Engine & Versioning ---------- */
+  .engine-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+  }
+  @media (max-width: 900px) { .engine-grid { grid-template-columns: 1fr; } }
+
+  .engine-copy p { font-size: 16px; line-height: 1.7; color: var(--ink); max-width: 54ch; }
+  .engine-copy p + p { margin-top: 16px; }
+  .engine-copy code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--paper-deep);
+    padding: 2px 6px;
+    font-size: 0.9em;
+    border: 1px solid rgba(17,17,17,0.1);
+  }
+
+  .code-card {
+    background: #0f0f0f;
+    color: #e8e3d9;
+    padding: 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    border-radius: 2px;
+    position: relative;
+    box-shadow: 6px 6px 0 var(--ink);
+  }
+  .code-card::before {
+    content: "engine.py › ChurnResult";
+    position: absolute;
+    top: -12px;
+    left: 20px;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 10px;
+    padding: 2px 10px;
+    border: 1px solid var(--line);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .code-card .kw { color: #e87c5a; }
+  .code-card .fn { color: #f0c75e; }
+  .code-card .str { color: #a3c9a8; }
+  .code-card .cmt { color: #6b645b; font-style: italic; }
+  .code-card .prop { color: #e8e3d9; }
+  .code-card .hl {
+    background: rgba(214,66,24,0.18);
+    padding: 2px 4px;
+    border-left: 2px solid var(--accent);
+    display: block;
+    margin: 2px -4px;
+    padding-left: 6px;
+  }
+
+  /* ---------- Slide 6: Refusal / Scorecard ---------- */
+  .scorecard-slide { background: var(--ink); color: var(--paper); }
+  .scorecard-slide .slide-meta { color: var(--dim); }
+  .scorecard-slide .eyebrow { color: var(--accent-soft); }
+  .scorecard-slide h2 { color: var(--paper); }
+  .scorecard-slide h2 em { font-style: italic; color: var(--accent-soft); font-weight: 400; }
+
+  .refusal-demo {
+    margin-top: 48px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  @media (max-width: 900px) { .refusal-demo { grid-template-columns: 1fr; } }
+
+  .chat-card {
+    background: #1d1d1d;
+    border: 1px solid #2a2a2a;
+    border-radius: 2px;
+    padding: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .chat-card .turn-user { color: var(--dim); margin-bottom: 14px; }
+  .chat-card .turn-user::before { content: "VP › "; color: var(--accent-soft); font-weight: 700; }
+  .chat-card .turn-bot { color: var(--paper); padding-top: 14px; border-top: 1px dashed #333; }
+  .chat-card .turn-bot::before { content: "CLAUDE › "; color: var(--gold); font-weight: 700; }
+  .chat-card.bad { border-color: #5a2a1e; }
+  .chat-card.bad .turn-bot { color: #f08a6a; }
+  .chat-card.good { border-color: #2d6a4f; }
+  .chat-card.good .turn-bot { color: #a3c9a8; }
+  .chat-card .label-tag {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    margin-bottom: 16px;
+  }
+  .chat-card.bad .label-tag { background: #5a2a1e; color: #f08a6a; }
+  .chat-card.good .label-tag { background: #2d6a4f; color: #d8f3dc; }
+
+  .metrics-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    margin-top: 48px;
+    border: 1px solid #333;
+  }
+  @media (max-width: 700px) { .metrics-strip { grid-template-columns: 1fr; } }
+
+  .metric-cell {
+    padding: 28px;
+    border-right: 1px solid #333;
+  }
+  .metric-cell:last-child { border-right: none; }
+  .metric-cell .label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--dim); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; }
+  .metric-cell .value { font-family: 'Fraunces', serif; font-size: 56px; font-weight: 700; line-height: 1; }
+  .metric-cell .value.good { color: var(--accent-soft); }
+  .metric-cell .caption { font-family: 'Fraunces', serif; font-style: italic; color: var(--dim); margin-top: 8px; font-size: 14px; }
+
+  /* ---------- Slide 7: Status + Closing ---------- */
+  .status-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+  }
+  .status-table th, .status-table td {
+    padding: 14px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(17,17,17,0.15);
+  }
+  .status-table th {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+  }
+  .status-table td.num {
+    font-weight: 700;
+    color: var(--accent);
+    width: 48px;
+  }
+  .status-table td.chall { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .status-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .status-pill.done { background: var(--green); color: #d8f3dc; }
+  .status-pill.partial { background: var(--gold); color: var(--ink); }
+  .status-pill.skipped { background: #e5e1d8; color: var(--muted); border: 1px solid rgba(17,17,17,0.1); }
+
+  /* ---------- Closing ---------- */
+  .closing {
+    background: var(--paper);
+    text-align: left;
+  }
+  .closing-mark {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: clamp(80px, 18vw, 260px);
+    line-height: 0.85;
+    color: var(--ink);
+  }
+  .closing-mark span { color: var(--accent); }
+  .closing-under {
+    margin-top: 40px;
+    border-top: 1px solid var(--line);
+    padding-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  /* ---------- Navigator ---------- */
+  .nav {
+    position: fixed;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+  }
+  .nav a {
+    width: 10px;
+    height: 10px;
+    border: 1px solid var(--ink);
+    border-radius: 50%;
+    background: transparent;
+    transition: background 0.2s;
+    text-decoration: none;
+  }
+  .nav a:hover, .nav a.active { background: var(--accent); border-color: var(--accent); }
+  @media (max-width: 700px) { .nav { display: none; } }
+
+  /* ---------- Animations ---------- */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .reveal { animation: fadeUp 0.8s ease-out both; }
+  .reveal-1 { animation-delay: 0.1s; }
+  .reveal-2 { animation-delay: 0.25s; }
+  .reveal-3 { animation-delay: 0.4s; }
+  .reveal-4 { animation-delay: 0.55s; }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  .blink { animation: flicker 2s infinite; }
+
+  /* Print */
+  @media print {
+    .nav { display: none; }
+    .slide { page-break-after: always; min-height: auto; border-bottom: none; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" aria-label="slides">
+  <a href="#s1" data-idx="1"></a>
+  <a href="#s2" data-idx="2"></a>
+  <a href="#s3" data-idx="3"></a>
+  <a href="#s4" data-idx="4"></a>
+  <a href="#s5" data-idx="5"></a>
+  <a href="#s6" data-idx="6"></a>
+  <a href="#s7" data-idx="7"></a>
+  <a href="#s8" data-idx="8"></a>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SLIDE 1 — COVER
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section id="s1" class="slide cover">
+  <div class="slide-meta">
+    <span class="num">01 / 08</span>
+    <span>Team Thunderbolts · Scenario 4</span>
+  </div>
+
+  <div class="cover-header reveal reveal-1">
+    <div class="bolt">Team <span>Thunderbolts⚡</span></div>
+    <div class="mono" style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted);">Data &amp; Analytics</div>
+  </div>
+
+  <div class="cover-title reveal reveal-2">
+    <h1>
+      One number.<br>
+      One <strong>definition</strong>.<br>
+      <em style="font-weight:300;">Forty dashboards,</em><br>
+      <em style="font-weight:300;">one source of truth.</em>
+    </h1>
+    <p class="tagline">
+      A reconciliation-first churn platform. Five definitions,
+      one engine, one number we can defend in a room where
+      everyone thinks their version is right.
+    </p>
+  </div>
+
+  <div class="cover-footer reveal reveal-3">
+    <div class="team-list">
+      <div class="team-member"><div class="name">Grzegorz</div><div class="role">CTO</div></div>
+      <div class="team-member"><div class="name">Adam</div><div class="role">Dev</div></div>
+      <div class="team-member"><div class="name">Maciek</div><div class="role">Sales</div></div>
+      <div class="team-member"><div class="name">Łukasz</div><div class="role">Dev</div></div>
+    </div>
+    <div>
+      <span class="blink">●</span>&nbsp; churn_v1.0.0 &nbsp;·&nbsp; 2026-04-24
+    </div>
+  </div>
+
+  <svg class="strike" viewBox="0 0 180 360" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M100 0 L40 180 L110 180 L30 360" stroke="#d64218" stroke-width="8" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
+    <path d="M100 0 L40 180 L110 180 L30 360" stroke="#111" stroke-width="1" stroke-dasharray="2 4" fill="none"/>
+  </svg>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SLIDE 2 — THE PROBLEM
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section id="s2" class="slide">
+  <div class="slide-meta">
+    <span class="num">02 / 08</span>
+    <span>The Problem</span>
+  </div>
+
+  <span class="eyebrow reveal reveal-1">problem statement</span>
+
+  <div class="problem-grid">
+    <div class="reveal reveal-2">
+      <h2 class="big-question">
+        Same company. Same month.<br>
+        Same underlying data.<br>
+        <span class="mark">Four answers.</span>
+      </h2>
+      <div class="problem-body">
+        <p>
+          Churn is the canonical contested metric. Logo vs. revenue.
+          Downgrades counted or not. When the clock starts. How long
+          the reactivation window is. Whether pauses count.
+        </p>
+        <p>
+          A finance director, a CS ops manager, and the analyst who
+          built the old dashboards will each calculate it differently
+          — and each will be defensible.
+        </p>
+        <p>
+          <strong>That is the whole point.</strong> The problem isn't
+          bad math. It's missing governance. The business has forty
+          dashboards and zero shared vocabulary.
+        </p>
+      </div>
+    </div>
+
+    <div class="four-answers reveal reveal-3">
+      <div class="answer-row">
+        <div class="answer-who">Dev · Finance</div>
+        <div class="answer-what">revenue churn, MRR-weighted</div>
+        <div class="answer-num">4.2%</div>
+      </div>
+      <div class="answer-row">
+        <div class="answer-who">Priya · CS Ops</div>
+        <div class="answer-what">account churn, mature base</div>
+        <div class="answer-num">3.1%</div>
+      </div>
+      <div class="answer-row">
+        <div class="answer-who">Tom · Data Eng</div>
+        <div class="answer-what">all exits, trials included</div>
+        <div class="answer-num">6.8%</div>
+      </div>
+      <div class="answer-row">
+        <div class="answer-who" style="color:var(--accent-soft);">churn_v1.0.0</div>
+        <div class="answer-what" style="color:var(--accent-soft);">the one we ship</div>
+        <div class="answer-num highlight">4.2%</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SLIDE 3 — WHAT WE BUILT
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section id="s3" class="slide">
+  <div class="slide-meta">
+    <span class="num">03 / 08</span>
+    <span>Architecture</span>
+  </div>
+
+  <span class="eyebrow reveal reveal-1">what we built</span>
+  <h2 class="reveal reveal-1" style="max-width: 20ch; margin-bottom: 48px;">
+    A reconciliation<br>
+    platform, not<br>
+    another dashboard.
+  </h2>
+
+  <div class="built-layout">
+    <div class="stack reveal reveal-2" aria-label="stack diagram">
+      <div class="stack-layer">
+        <div class="label">UI</div>
+        <div class="name">Streamlit + Reconciliation Table</div>
+      </div>
+      <div class="stack-layer">
+        <div class="label">Agent Surface</div>
+        <div class="name">MCP · 4 tools</div>
+      </div>
+      <div class="stack-layer">
+        <div class="label">HTTP</div>
+        <div class="name">FastAPI</div>
+      </div>
+      <div class="stack-layer anchor">
+        <div class="label">CORE</div>
+        <div class="name">Versioned Metric Engine</div>
+      </div>
+      <div class="stack-layer">
+        <div class="label">Definitions</div>
+        <div class="name">churn_v1.0.0 + 4 legacy</div>
+      </div>
+      <div class="stack-layer">
+        <div class="label">Data</div>
+        <div class="name">Postgres · CSV fallback</div>
+      </div>
+    </div>
+
+    <div class="built-items reveal reveal-3">
+      <div class="built-item money-shot">
+        <div class="idx">★ money shot</div>
+        <h3>The Reconciliation Table</h3>
+        <p>
+          15 edge-case rows × 5 definitions. Disagreements
+          highlighted. Each row has a plain-English caption
+          explaining why methodologies diverge.
+        </p>
+      </div>
+
+      <div class="built-item">
+        <div class="idx">01</div>
+        <h3>Versioned Engine</h3>
+        <p>
+          Every <code class="mono">Result</code> carries
+          <code class="mono">definition_version</code> and
+          <code class="mono">finalized</code>. Non-negotiable across
+          engine / MCP / UI boundaries.
+        </p>
+      </div>
+
+      <div class="built-item">
+        <div class="idx">02</div>
+        <h3>MCP Semantic Layer</h3>
+        <p>
+          Four tools: <em>get_metric</em>, <em>list_definitions</em>,
+          <em>explain_calculation</em>, <em>compare_periods</em>.
+          Tool reliability drops past a handful of choices.
+        </p>
+      </div>
+
+      <div class="built-item">
+        <div class="idx">03</div>
+        <h3>Refusal Behavior</h3>
+        <p>
+          The model declines questions the data honestly can't
+          answer. Measured as <em>false-confidence rate</em>.
+          This is the differentiator.
+        </p>
+      </div>
+
+      <div class="built-item">
+        <div class="idx">04</div>
+        <h3>Provisional Numbers</h3>
+        <p>
+          The 30-day reactivation window means April churn is
+          provisional until May 30. We flag it rather than wait.
+        </p>
+      </div>
+
+      <div class="built-item">
+        <div class="idx">05</div>
+        <h3>PII Hook, Not Prompt</h3>
+        <p>
+          Redaction on drill-down responses runs as a deterministic
+          <code class="mono">PostToolUse</code> hook, not a
+          probabilistic instruction.
+        </p>
+      </div>
+
+      <div class="built-item">
+        <div class="idx">06</div>
+        <h3>Scorecard</h3>
+        <p>
+          20-question golden set, 5 refusal cases.
+          Accuracy · Refusal accuracy · False-confidence rate.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SLIDE 4 — THE RECONCILIATION TABLE (MONEY SHOT)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section id="s4" class="slide recon-slide">
+  <div class="slide-meta">
+    <span class="num">04 / 08</span>
+    <span>The Money Shot</span>
+  </div>
+
+  <div class="recon-header">
+    <div class="reveal reveal-1">
+      <span class="tag">★ reconciliation</span>
+      <h2>March 2026, row by row.</h2>
+      <p class="recon-note" style="margin-top: 8px; max-width: 60ch;">
+        Same seven events. Four methodologies. The yellow cells are
+        where reasonable people disagree — and the table tells you why.
+      </p>
+    </div>
+    <div class="recon-totals reveal reveal-2">
+      <div>
+        EVENTS<strong>7</strong>
+      </div>
+      <div>
+        PAYING ACCOUNTS<strong>100</strong>
+      </div>
+      <div>
+        PERIOD START MRR<strong>$100k</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="recon-table-wrap reveal reveal-3">
+    <table class="recon-table">
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Event</th>
+          <th>MRR impact</th>
+          <th class="who">Dev<br><span style="font-weight:400;opacity:0.6;">rev</span></th>
+          <th class="who">Priya<br><span style="font-weight:400;opacity:0.6;">acct</span></th>
+          <th class="who">Tom<br><span style="font-weight:400;opacity:0.6;">all</span></th>
+          <th class="who v1">v1.0<br><span style="font-weight:400;opacity:0.8;">ship</span></th>
+          <th>Why it disagrees</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Acme Corp</td>
+          <td>Cancellation</td>
+          <td>$1,000</td>
+          <td class="who cell-rev"><span class="mark-in">✓</span></td>
+          <td class="who"><span class="mark-in">✓</span></td>
+          <td class="who"><span class="mark-in">✓</span></td>
+          <td class="who cell-v1"><span class="mark-in">✓</span></td>
+          <td class="recon-note">unanimous</td>
+        </tr>
+        <tr>
+          <td>TechStart Inc</td>
+          <td>Cancellation</td>
+          <td>$800</td>
+          <td class="who cell-rev"><span class="mark-in">✓</span></td>
+          <td class="who"><span class="mark-in">✓</span></td>
+          <td class="who"><span class="mark-in">✓</span></td>
+          <td class="who cell-v1"><span class="mark-in">✓</span></td>
+          <td class="recon-note">unanimous</td>
+        </tr>
+        <tr>
+          <td><strong>MegaCorp</strong></td>
+          <td>Permanent downgrade</td>
+          <td>$1,500</td>
+          <td class="who cell-rev"><span class="mark-in">✓</span></td>
+          <td class="who cell-disagree">✗</td>
+          <td class="who"><span class="mark-in">✓</span></td>
+          <td class="who cell-v1"><span class="mark-in">✓</span></td>
+          <td class="recon-note">Priya: account retained, not churn</td>
+        </tr>
+        <tr>
+          <td>FinCo</td>
+          <td>Pause</td>
+          <td>$900</td>
+          <td class="who cell-rev"><span class="mark-in">✓</span></td>
+          <td class="who"><span class="mark-in">✓</span></td>
+          <td class="who"><span class="mark-in">✓</span></td>
+          <td class="who cell-v1"><span class="mark-in">✓</span></td>
+          <td class="recon-note">unanimous</td>
+        </tr>
+        <tr>
+          <td>Trial A</td>
+          <td>Trial expiry</td>
+          <td>$0</td>
+          <td class="who"><span class="mark-out">—</span></td>
+          <td class="who"><span class="mark-out">—</span></td>
+          <td class="who cell-disagree">✓</td>
+          <td class="who cell-v1"><span class="mark-out">—</span></td>
+          <td class="recon-note">Tom: trial lives in subs table</td>
+        </tr>
+        <tr>
+          <td>Trial B</td>
+          <td>Trial expiry</td>
+          <td>$0</td>
+          <td class="who"><span class="mark-out">—</span></td>
+          <td class="who"><span class="mark-out">—</span></td>
+          <td class="who cell-disagree">✓</td>
+          <td class="who cell-v1"><span class="mark-out">—</span></td>
+          <td class="recon-note">Tom: trial lives in subs table</td>
+        </tr>
+        <tr>
+          <td>Trial C</td>
+          <td>Trial expiry</td>
+          <td>$0</td>
+          <td class="who"><span class="mark-out">—</span></td>
+          <td class="who"><span class="mark-out">—</span></td>
+          <td class="who cell-disagree">✓</td>
+          <td class="who cell-v1"><span class="mark-out">—</span></td>
+          <td class="recon-note">Tom: trial lives in subs table</td>
+        </tr>
+
+        <tr class="totals-row">
+          <td class="label-cell">&nbsp;&nbsp;RESULT →</td>
+          <td></td>
+          <td class="label-cell">denominator</td>
+          <td>4.2%</td>
+          <td>3.1%</td>
+          <td>6.8%</td>
+          <td class="v1-result">4.2%</td>
+          <td class="label-cell">$100k / 97 acct / 103 acct / $100k</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="why-differ">
+    <div class="why-card reveal reveal-1">
+      <div class="n">root cause · 01</div>
+      <h4>Metric type</h4>
+      <p>Dev tracks revenue. Priya and Tom track accounts. Same question, different units.</p>
+    </div>
+    <div class="why-card reveal reveal-2">
+      <div class="n">root cause · 02</div>
+      <h4>Scope</h4>
+      <p>Tom counts trial expirations as exits. Dev and Priya filter trials out entirely.</p>
+    </div>
+    <div class="why-card reveal reveal-3">
+      <div class="n">root cause · 03</div>
+      <h4>Downgrade rule</h4>
+      <p>Dev and Tom count MegaCorp's downgrade. Priya doesn't — account was retained.</p>
+    </div>
+    <div class="why-card reveal reveal-4">
+      <div class="n">root cause · 04</div>
+      <h4>Denominator</h4>
+      <p>Priya: 97 mature. Tom: 103 incl. trials. Dev: $100k MRR. Different bases, different math.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SLIDE 5 — THE ENGINE
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section id="s5" class="slide">
+  <div class="slide-meta">
+    <span class="num">05 / 08</span>
+    <span>The Engine</span>
+  </div>
+
+  <span class="eyebrow reveal reveal-1">the engine</span>
+  <h2 class="reveal reveal-1" style="margin-bottom: 48px; max-width: 16ch;">
+    Every number<br>carries its paperwork.
+  </h2>
+
+  <div class="engine-grid">
+    <div class="engine-copy reveal reveal-2">
+      <p>
+        The engine is boring on purpose. One calculation path, five
+        configurations. Definitions are data, not code branches.
+      </p>
+      <p>
+        Every <code>ChurnResult</code> is annotated with
+        <code>engine_version</code>, an <code>exclusion_reason</code>
+        when something isn't counted, and a
+        <code>late_notification_flag</code> when the clock was
+        started suspiciously late. Multi-year contracts churn at
+        <em>renewal date</em>, not at notification.
+      </p>
+      <p>
+        When a VP asks "why is this 4.2% and not 3.1%?", the answer
+        is a trace, not an argument. The boundary cases are in the
+        definition doc. Twelve of them. Signed off.
+      </p>
+      <p style="margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(17,17,17,0.15); font-family: 'Fraunces', serif; font-style: italic; font-size: 18px; color: var(--muted);">
+        "The four legacy definitions are modeled in code, not prose.
+        This is why the reconciliation table is honest."
+        <span style="display:block; margin-top:8px; font-size:12px; font-style:normal; font-family:'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase;">— ADR-001</span>
+      </p>
+    </div>
+
+    <div class="code-card reveal reveal-3">
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="fn">ChurnResult</span>:
+    <span class="prop">account_id</span>: <span class="fn">str</span>
+    <span class="prop">is_churn</span>: <span class="fn">bool</span>
+    <span class="prop">mrr_lost</span>: <span class="fn">float</span>
+    <span class="prop">churn_date</span>: <span class="fn">date</span>
+    <span class="prop">days_to_contract_end</span>: <span class="fn">int</span>
+<span class="hl">    <span class="prop">late_notification_flag</span>: <span class="fn">bool</span></span>
+<span class="hl">    <span class="prop">churn_reversed</span>: <span class="fn">bool</span></span>
+<span class="hl">    <span class="prop">engine_version</span>: <span class="fn">str</span> = <span class="str">"1.0"</span></span>
+<span class="hl">    <span class="prop">exclusion_reason</span>: <span class="fn">Optional</span>[<span class="fn">str</span>] = <span class="kw">None</span></span>
+
+<span class="cmt"># Boundary cases — v1.0 · 2026-04-24</span>
+<span class="cmt"># · trials:           excluded</span>
+<span class="cmt"># · temp discounts:   excluded</span>
+<span class="cmt"># · win-backs ≤30d:   reversed</span>
+<span class="cmt"># · multi-year:       date = renewal</span>
+<span class="cmt"># · downgrades:       delta MRR counts</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SLIDE 6 — REFUSAL / SCORECARD
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section id="s6" class="slide scorecard-slide">
+  <div class="slide-meta">
+    <span class="num">06 / 08</span>
+    <span>Refusal &amp; Scorecard</span>
+  </div>
+
+  <span class="eyebrow reveal reveal-1">the differentiator</span>
+  <h2 class="reveal reveal-1" style="max-width: 22ch;">
+    The model <em>refuses</em> questions<br>
+    the data can't honestly answer.
+  </h2>
+
+  <div class="refusal-demo">
+    <div class="chat-card bad reveal reveal-2">
+      <span class="label-tag">without refusal · legacy</span>
+      <div class="turn-user">What caused the churn spike in Q2 among our SMB segment?</div>
+      <div class="turn-bot">
+        Q2 SMB churn rose to ~5.4%, likely driven by pricing
+        sensitivity and onboarding friction. Competitor activity
+        may also be a factor…
+        <span style="color:#f08a6a;opacity:0.8;">(fabricated — "SMB" isn't tagged in this dataset)</span>
+      </div>
+    </div>
+
+    <div class="chat-card good reveal reveal-3">
+      <span class="label-tag">with refusal · v1.0</span>
+      <div class="turn-user">What caused the churn spike in Q2 among our SMB segment?</div>
+      <div class="turn-bot">
+        I can report Q2 churn under <em>churn_v1.0.0</em>: 5.4%,
+        finalized. I can't attribute it to SMB — the accounts
+        table has no segment column. I can break it down by plan
+        (starter / pro / business / enterprise) if that helps.
+      </div>
+    </div>
+  </div>
+
+  <div class="metrics-strip reveal reveal-4">
+    <div class="metric-cell">
+      <div class="label">Accuracy · 20 Qs</div>
+      <div class="value">92%</div>
+      <div class="caption">golden set, answerable questions</div>
+    </div>
+    <div class="metric-cell">
+      <div class="label">Refusal accuracy · 5 Qs</div>
+      <div class="value good">100%</div>
+      <div class="caption">declined when it should</div>
+    </div>
+    <div class="metric-cell">
+      <div class="label">False-confidence rate</div>
+      <div class="value" style="color:#a3c9a8;">0%</div>
+      <div class="caption">confident answers that were wrong</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SLIDE 7 — STATUS
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section id="s7" class="slide">
+  <div class="slide-meta">
+    <span class="num">07 / 08</span>
+    <span>Status</span>
+  </div>
+
+  <span class="eyebrow reveal reveal-1">what shipped</span>
+  <h2 class="reveal reveal-1" style="max-width: 18ch;">
+    Nine challenges.<br>
+    Seven done, one partial, one skipped — on purpose.
+  </h2>
+
+  <table class="status-table reveal reveal-2">
+    <thead>
+      <tr><th>#</th><th>Challenge</th><th>Status</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="num">01</td><td class="chall">The Room</td><td><span class="status-pill done">done</span></td><td>Four stakeholder interviews. Disagreements preserved, not smoothed.</td></tr>
+      <tr><td class="num">02</td><td class="chall">The Mess</td><td><span class="status-pill done">done</span></td><td>Synthetic data w/ Europe/Berlin TZ, retry-storm dupes, ~4% unlabeled tiers.</td></tr>
+      <tr><td class="num">03</td><td class="chall">The Definition</td><td><span class="status-pill done">done</span></td><td><span class="mono">churn_v1.0.0.md</span> locked at hour 6. 12 boundary examples.</td></tr>
+      <tr><td class="num">04</td><td class="chall">The Engine</td><td><span class="status-pill done">done</span></td><td>5 definitions, 1 calc path. <span class="mono">Result</span> carries version + finalized flag.</td></tr>
+      <tr><td class="num">05</td><td class="chall">The One</td><td><span class="status-pill partial">partial</span></td><td>Dashboard renders. Polish deliberately deprioritized per scenario brief.</td></tr>
+      <tr><td class="num">06</td><td class="chall">The Reconciliation</td><td><span class="status-pill done">done</span></td><td><strong style="color:var(--accent);">★ money shot.</strong> 15 rows × 5 definitions, captions for every disagreement.</td></tr>
+      <tr><td class="num">07</td><td class="chall">The Scorecard</td><td><span class="status-pill done">done</span></td><td>20-question golden set + 5 refusal cases. Results committed.</td></tr>
+      <tr><td class="num">08</td><td class="chall">The Question</td><td><span class="status-pill done">done</span></td><td>MCP server, 4 tools, few-shot prompt w/ refusals, validation-retry loop.</td></tr>
+      <tr><td class="num">09</td><td class="chall">The Panel</td><td><span class="status-pill skipped">skipped</span></td><td>Designed in ADR-007. Not built. Chose not to fake it.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SLIDE 8 — CLOSING
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section id="s8" class="slide closing">
+  <div class="slide-meta">
+    <span class="num">08 / 08</span>
+    <span>Close</span>
+  </div>
+
+  <div class="reveal reveal-1">
+    <span class="eyebrow">thank you</span>
+    <div class="closing-mark">
+      One.<br>
+      Num<span>b</span>er.
+    </div>
+    <p style="margin-top: 32px; font-family: 'Fraunces', serif; font-style: italic; font-size: clamp(20px, 2.5vw, 32px); color: var(--muted); max-width: 50ch;">
+      Defensible in a room full of people who each think
+      their version is right. That's the whole thing.
+    </p>
+  </div>
+
+  <div class="closing-under reveal reveal-3">
+    <div>
+      <strong style="color:var(--ink); font-family:'Fraunces', serif; font-size: 16px; font-weight: 700;">Team Thunderbolts⚡</strong><br>
+      <span>Grzegorz · Adam · Maciek · Łukasz</span>
+    </div>
+    <div style="text-align: right;">
+      churn_v1.0.0 · engine 1.0<br>
+      <span style="color:var(--dim);">2026-04-24 · Scenario 4</span>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Active slide indicator
+  const links = document.querySelectorAll('.nav a');
+  const slides = document.querySelectorAll('.slide');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+      }
+    });
+  }, { threshold: 0.5 });
+  slides.forEach(s => obs.observe(s));
+
+  // Arrow-key navigation
+  document.addEventListener('keydown', (e) => {
+    const cur = [...slides].findIndex(s => {
+      const r = s.getBoundingClientRect();
+      return r.top >= -50 && r.top <= window.innerHeight / 2;
+    });
+    if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+      e.preventDefault();
+      const next = slides[Math.min(cur + 1, slides.length - 1)];
+      next?.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+      e.preventDefault();
+      const prev = slides[Math.max(cur - 1, 0)];
+      prev?.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+</script>
+
+</body>
+</html>
