@@ -11,8 +11,6 @@
 - **Lukasz** — Dev
 
 
-We are three people. We played every role. Claude Code filled the gaps.
-
 ## Scenario
 
 **Scenario 4: Data & Analytics — "40 Dashboards, One Metric, Four Answers"**
