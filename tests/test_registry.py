@@ -17,7 +17,13 @@ def test_get_unknown_metric_raises():
 def test_list_metrics_v1():
     metrics = list_metrics(version="v1")
     names = {m.name for m in metrics}
-    assert {"customer_churn_rate", "revenue_churn_rate", "net_revenue_retention"} == names
+    assert {
+        "customer_churn_rate",
+        "revenue_churn_rate",
+        "net_revenue_retention",
+        "downgrade_inclusive_churn",
+        "logo_churn_conservative",
+    } == names
 
 
 def test_list_all_metrics():

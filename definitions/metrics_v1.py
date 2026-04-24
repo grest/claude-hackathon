@@ -49,7 +49,42 @@ NET_REVENUE_RETENTION = ChurnMetricDefinition(
     required_columns=["customer_id", "mrr", "status", "start_date", "end_date"],
 )
 
+# Legacy definition 4: downgrade-inclusive churn rate
+# Finance director view: a plan downgrade is a partial churn event
+# Requires the events DataFrame — handled differently from pure subscription metrics
+DOWNGRADE_INCLUSIVE_CHURN = ChurnMetricDefinition(
+    name="downgrade_inclusive_churn",
+    version="v1",
+    description=(
+        "Churned + pro-rated downgrade MRR loss divided by MRR at period start. "
+        "Treats plan downgrades as partial churn events (finance director view)."
+    ),
+    lookback_days=30,
+    required_columns=["customer_id", "plan", "mrr", "start_date", "end_date", "status"],
+)
+
+# Legacy definition 5: logo churn (conservative denominator)
+# CS ops view: denominator = customers active throughout the full window
+# (started BEFORE period_start AND still active at period_start)
+LOGO_CHURN_CONSERVATIVE = ChurnMetricDefinition(
+    name="logo_churn_conservative",
+    version="v1",
+    description=(
+        "Churned customers divided by customers active for the full lookback window "
+        "(started before window start and not yet churned). "
+        "CS ops view — excludes mid-window new starts from the denominator."
+    ),
+    lookback_days=30,
+    required_columns=["customer_id", "plan", "mrr", "start_date", "end_date", "status"],
+)
+
 ALL_METRICS: dict[str, ChurnMetricDefinition] = {
     m.name: m
-    for m in [CUSTOMER_CHURN_RATE, REVENUE_CHURN_RATE, NET_REVENUE_RETENTION]
+    for m in [
+        CUSTOMER_CHURN_RATE,
+        REVENUE_CHURN_RATE,
+        NET_REVENUE_RETENTION,
+        DOWNGRADE_INCLUSIVE_CHURN,
+        LOGO_CHURN_CONSERVATIVE,
+    ]
 }

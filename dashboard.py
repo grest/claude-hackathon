@@ -21,6 +21,8 @@ from engine.calculator import (
     customer_churn_rate as _ccr,
     revenue_churn_rate as _rcr,
     net_revenue_retention as _nrr,
+    logo_churn_conservative as _logo_cons,
+    downgrade_inclusive_churn as _di_churn,
 )
 
 st.set_page_config(
@@ -162,9 +164,11 @@ st.divider()
 st.subheader("Metric Values")
 
 _calc_map = {
-    "customer_churn_rate":   _ccr,
-    "revenue_churn_rate":    _rcr,
-    "net_revenue_retention": _nrr,
+    "customer_churn_rate":       _ccr,
+    "revenue_churn_rate":        _rcr,
+    "net_revenue_retention":     _nrr,
+    "downgrade_inclusive_churn": _di_churn,
+    "logo_churn_conservative":   _logo_cons,
 }
 
 metric_defs = list_metrics(version="v1")
@@ -269,3 +273,64 @@ st.dataframe(
         "metadata":    st.column_config.TextColumn("Metadata"),
     },
 )
+
+st.divider()
+st.subheader("Reconciliation Table — Edge Cases × Definitions")
+st.caption(
+    "Each row is a hand-crafted edge case that triggers a disagreement between definitions. "
+    "Columns show what each definition returns for a 30-day window ending 2024-11-30."
+)
+
+RECON_AS_OF = date(2024, 11, 30)
+RECON_LOOKBACK = 30
+EDGE_CASE_IDS = [f"EC{str(i).zfill(3)}" for i in range(1, 16)]
+
+# All 5 calculator functions
+CALC_FNS = {
+    "customer_churn_rate":       _ccr,
+    "revenue_churn_rate":        _rcr,
+    "net_revenue_retention":     _nrr,
+    "logo_churn_conservative":   _logo_cons,
+    "downgrade_inclusive_churn": _di_churn,
+}
+
+recon_rows = []
+for ec_id in EDGE_CASE_IDS:
+    ec_df = df[df["customer_id"] == ec_id]
+    if ec_df.empty:
+        continue
+    row = {"Customer": ec_id}
+    for metric_name, fn in CALC_FNS.items():
+        val = fn(ec_df, RECON_AS_OF, lookback_days=RECON_LOOKBACK)
+        row[metric_name] = f"{val*100:.1f}%"
+    recon_rows.append(row)
+
+if recon_rows:
+    recon_df = pd.DataFrame(recon_rows).set_index("Customer")
+    st.dataframe(recon_df, use_container_width=True)
+else:
+    st.info(
+        "No edge-case customers (EC001–EC015) found in the current dataset. "
+        "Load a dataset that includes these IDs to see the reconciliation table."
+    )
+
+with st.expander("Why these edge cases matter"):
+    st.markdown("""
+| Customer | Scenario | What disagrees |
+|----------|----------|----------------|
+| EC001 | Started and churned within the same 30-day window | `customer_churn_rate` counts it; `logo_churn_conservative` excludes it from denominator |
+| EC002 | Unknown plan tier with non-zero MRR ($149) | Revenue definitions disagree on how to handle unlabeled revenue |
+| EC003 | Churned on exact period boundary (Oct 31) | Boundary-inclusive vs. exclusive definitions split here |
+| EC004 | Long-lived enterprise account — high MRR impact | Revenue churn vs. logo churn magnitude diverges sharply |
+| EC005 | Active customer with plan downgrade event | `downgrade_inclusive_churn` counts this; others don't |
+| EC006 | Active customer with plan upgrade | `net_revenue_retention` benefits; gross churn metrics ignore it |
+| EC007 | 7-day tenure (trial-like) churn | Some definitions exclude sub-30-day accounts from denominator |
+| EC008 | EU timezone boundary (churned Dec 31 vs Jan 1) | Date-boundary definitions split depending on UTC vs local time |
+| EC009 | Retry-storm duplicate cancel event | Naive event-counting definitions double-count this churn |
+| EC010 | Reactivated customer (churned then came back) | Definitions disagree on whether this counts as churn at all |
+| EC011 | Zero-MRR free-tier account churned | Logo churn counts it; all revenue churn definitions ignore it |
+| EC012 | Mid-month start and churn (Nov 16–30) | Partial-month denominator treatment varies |
+| EC013 | Churned 1 day outside the window (Oct 30) | Boundary strictness — should be 0 for all definitions |
+| EC014 | Paused/suspended account churned | Some definitions treat pauses as non-churn |
+| EC015 | Unknown plan + churned | Worst case for revenue definitions (unknown MRR basis) |
+""")
