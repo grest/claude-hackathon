@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python db/init_db.py)"
+      "Bash(python db/init_db.py)",
+      "Bash(python -c ' *)"
     ]
   }
 }

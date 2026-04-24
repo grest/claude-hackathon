@@ -84,8 +84,12 @@ def fetch_subscriptions(db_path: str, as_of: Optional[date] = None) -> pd.DataFr
     finally:
         conn.close()
 
-    df["start_date"] = pd.to_datetime(df["start_date"], errors="coerce")
-    df["end_date"]   = pd.to_datetime(df["end_date"],   errors="coerce")
-    df["mrr"]        = df["mrr"].astype("float64")
-    df["customer_id"] = df["customer_id"].astype(str)
+    df["start_date"]  = pd.to_datetime(df["start_date"], errors="coerce")
+    df["end_date"]    = pd.to_datetime(df["end_date"],   errors="coerce")
+    df["mrr"]         = df["mrr"].astype("float64")
+    # Force legacy object dtype for string columns so the calculator's
+    # equality comparisons (e.g. df["status"] == "churned") behave identically
+    # regardless of which pandas StringDtype variant sqlite3 infers.
+    for col in ("customer_id", "plan", "status"):
+        df[col] = df[col].astype(object)
     return df
