@@ -17,25 +17,17 @@ log = logging.getLogger(__name__)
 REPO_ROOT   = Path(__file__).parent.parent
 DATA_DIR    = REPO_ROOT / "data"
 DEFAULT_CSV = DATA_DIR / "sample_subscriptions.csv"
-DEFAULT_DB  = DATA_DIR / "adventureworks.db"
-DEFAULT_CSV_DIR = DATA_DIR / "AdventureWorks-oltp-install-script"
+DEFAULT_DB  = DATA_DIR / "churn_engine.db"
 
 
 def _ensure_db() -> None:
-    """Build adventureworks.db from CSVs if it doesn't exist yet."""
+    """Build churn_engine.db from synthetic data if it doesn't exist yet."""
     db_path = Path(os.environ.get("DATABASE_PATH", "").strip() or DEFAULT_DB)
 
     if not db_path.exists():
-        if not DEFAULT_CSV_DIR.exists():
-            log.warning(
-                "AdventureWorks CSV dir not found at %s — skipping DB init, "
-                "API will fall back to sample CSV.",
-                DEFAULT_CSV_DIR,
-            )
-            return
-        log.info("Building %s from AdventureWorks CSVs …", db_path)
+        log.info("Generating synthetic SaaS dataset at %s …", db_path)
         from db.init_db import build_db
-        build_db(DEFAULT_CSV_DIR, db_path)
+        build_db(db_path)
         log.info("Database ready at %s", db_path)
     else:
         log.info("Database already exists at %s — skipping init.", db_path)

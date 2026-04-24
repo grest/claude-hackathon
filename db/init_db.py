@@ -1,188 +1,193 @@
 """
-Build data/adventureworks.db from the AdventureWorks CSV files.
+Generate a synthetic SaaS subscription dataset and populate data/churn_engine.db.
 
 Usage:
     python db/init_db.py
-    python db/init_db.py --csv-dir data/AdventureWorks-oltp-install-script --output data/adventureworks.db
+    python db/init_db.py --output data/churn_engine.db --seed 42
 """
 import argparse
+import random
 import sqlite3
+from datetime import date, timedelta
 from pathlib import Path
 
-import pandas as pd
-
 REPO_ROOT = Path(__file__).parent.parent
-DEFAULT_CSV_DIR = REPO_ROOT / "data" / "AdventureWorks-oltp-install-script"
-DEFAULT_OUTPUT  = REPO_ROOT / "data" / "adventureworks.db"
+DEFAULT_OUTPUT = REPO_ROOT / "data" / "churn_engine.db"
 
-# ── Table registry ────────────────────────────────────────────────────────────
-# Each entry: sqlite_table_name -> (csv_filename, delimiter, [columns])
-#   delimiter "tab"  = FIELDTERMINATOR '\t', ROWTERMINATOR '\n'
-#   delimiter "plus" = FIELDTERMINATOR '+|', ROWTERMINATOR '&|\n'  (XML columns)
-#   columns = ordered list matching CSV column positions (no header row in files)
-
-TAB = "tab"
-PLUS = "plus"
-
-TABLES: dict[str, tuple[str, str, list[str]]] = {
-    "sales_customer": ("Customer.csv", TAB, [
-        "CustomerID", "PersonID", "StoreID", "TerritoryID",
-        "AccountNumber", "rowguid", "ModifiedDate",
-    ]),
-    "sales_salesorderheader": ("SalesOrderHeader.csv", TAB, [
-        "SalesOrderID", "RevisionNumber", "OrderDate", "DueDate", "ShipDate",
-        "Status", "OnlineOrderFlag", "SalesOrderNumber", "PurchaseOrderNumber",
-        "AccountNumber", "CustomerID", "SalesPersonID", "TerritoryID",
-        "BillToAddressID", "ShipToAddressID", "ShipMethodID", "CreditCardID",
-        "CreditCardApprovalCode", "CurrencyRateID", "SubTotal", "TaxAmt",
-        "Freight", "TotalDue", "Comment", "rowguid", "ModifiedDate",
-    ]),
-    "sales_salesorderdetail": ("SalesOrderDetail.csv", TAB, [
-        "SalesOrderID", "SalesOrderDetailID", "CarrierTrackingNumber", "OrderQty",
-        "ProductID", "SpecialOfferID", "UnitPrice", "UnitPriceDiscount",
-        "LineTotal", "rowguid", "ModifiedDate",
-    ]),
-    "sales_salesterritory": ("SalesTerritory.csv", TAB, [
-        "TerritoryID", "Name", "CountryRegionCode", "TerritoryGroup",
-        "SalesYTD", "SalesLastYear", "CostYTD", "CostLastYear", "rowguid", "ModifiedDate",
-    ]),
-    "sales_salesperson": ("SalesPerson.csv", TAB, [
-        "BusinessEntityID", "TerritoryID", "SalesQuota", "Bonus", "CommissionPct",
-        "SalesYTD", "SalesLastYear", "rowguid", "ModifiedDate",
-    ]),
-    "sales_salesterritoryhistory": ("SalesTerritoryHistory.csv", TAB, [
-        "BusinessEntityID", "TerritoryID", "StartDate", "EndDate", "rowguid", "ModifiedDate",
-    ]),
-    "sales_salesorderheadersalesreason": ("SalesOrderHeaderSalesReason.csv", TAB, [
-        "SalesOrderID", "SalesReasonID", "ModifiedDate",
-    ]),
-    "sales_salesreason": ("SalesReason.csv", TAB, [
-        "SalesReasonID", "Name", "ReasonType", "ModifiedDate",
-    ]),
-    "sales_specialoffer": ("SpecialOffer.csv", TAB, [
-        "SpecialOfferID", "Description", "DiscountPct", "Type", "Category",
-        "StartDate", "EndDate", "MinQty", "MaxQty", "rowguid", "ModifiedDate",
-    ]),
-    "sales_specialofferproduct": ("SpecialOfferProduct.csv", TAB, [
-        "SpecialOfferID", "ProductID", "rowguid", "ModifiedDate",
-    ]),
-    "production_product": ("Product.csv", TAB, [
-        "ProductID", "Name", "ProductNumber", "MakeFlag", "FinishedGoodsFlag",
-        "Color", "SafetyStockLevel", "ReorderPoint", "StandardCost", "ListPrice",
-        "Size", "SizeUnitMeasureCode", "WeightUnitMeasureCode", "Weight",
-        "DaysToManufacture", "ProductLine", "Class", "Style", "ProductSubcategoryID",
-        "ProductModelID", "SellStartDate", "SellEndDate", "DiscontinuedDate",
-        "rowguid", "ModifiedDate",
-    ]),
-    "production_productcategory": ("ProductCategory.csv", TAB, [
-        "ProductCategoryID", "Name", "rowguid", "ModifiedDate",
-    ]),
-    "production_productsubcategory": ("ProductSubcategory.csv", TAB, [
-        "ProductSubcategoryID", "ProductCategoryID", "Name", "rowguid", "ModifiedDate",
-    ]),
-    "person_address": ("Address.csv", TAB, [
-        "AddressID", "AddressLine1", "AddressLine2", "City", "StateProvinceID",
-        "PostalCode", "SpatialLocation", "rowguid", "ModifiedDate",
-    ]),
-    "person_stateprovince": ("StateProvince.csv", TAB, [
-        "StateProvinceID", "StateProvinceCode", "CountryRegionCode",
-        "IsOnlyStateProvinceFlag", "Name", "TerritoryID", "rowguid", "ModifiedDate",
-    ]),
-    # +| delimited (XML columns prevent tab use)
-    "person_person": ("Person.csv", PLUS, [
-        "BusinessEntityID", "PersonType", "NameStyle", "Title", "FirstName",
-        "MiddleName", "LastName", "Suffix", "EmailPromotion",
-        "AdditionalContactInfo", "Demographics", "rowguid", "ModifiedDate",
-    ]),
-    "sales_store": ("Store.csv", PLUS, [
-        "BusinessEntityID", "Name", "SalesPersonID", "Demographics", "rowguid", "ModifiedDate",
-    ]),
-}
-
-# Indexes to create after all tables are loaded
-INDEXES = [
-    "CREATE INDEX IF NOT EXISTS ix_soh_customer    ON sales_salesorderheader(CustomerID)",
-    "CREATE INDEX IF NOT EXISTS ix_soh_territory   ON sales_salesorderheader(TerritoryID)",
-    "CREATE INDEX IF NOT EXISTS ix_sod_order       ON sales_salesorderdetail(SalesOrderID)",
-    "CREATE INDEX IF NOT EXISTS ix_sod_product     ON sales_salesorderdetail(ProductID)",
-    "CREATE INDEX IF NOT EXISTS ix_cust_store      ON sales_customer(StoreID)",
-    "CREATE INDEX IF NOT EXISTS ix_cust_territory  ON sales_customer(TerritoryID)",
-    "CREATE INDEX IF NOT EXISTS ix_product_subcat  ON production_product(ProductSubcategoryID)",
-    "CREATE INDEX IF NOT EXISTS ix_subcat_cat      ON production_productsubcategory(ProductCategoryID)",
-    "CREATE INDEX IF NOT EXISTS ix_sth_person      ON sales_salesterritoryhistory(BusinessEntityID)",
-    "CREATE INDEX IF NOT EXISTS ix_store_sp        ON sales_store(SalesPersonID)",
+PLANS = [
+    ("starter",     29.00),
+    ("pro",         99.00),
+    ("business",   249.00),
+    ("enterprise", 499.00),
 ]
 
+CHURN_REASONS = ["price", "competitor", "unused", "too_complex", "budget_cut", "switching_tools"]
+UPGRADE_PATHS = [
+    ("starter", "pro"),
+    ("pro", "business"),
+    ("business", "enterprise"),
+    ("starter", "business"),
+]
+DOWNGRADE_PATHS = [
+    ("enterprise", "business"),
+    ("business", "pro"),
+    ("pro", "starter"),
+]
 
-def _load_tab(path: Path, columns: list[str]) -> pd.DataFrame:
-    return pd.read_csv(
-        path,
-        sep="\t",
-        header=None,
-        names=columns,
-        dtype=str,
-        na_values=[""],
-        keep_default_na=True,
-        encoding="utf-8-sig",
-        on_bad_lines="skip",
-    )
-
-
-def _load_plus(path: Path, columns: list[str]) -> pd.DataFrame:
-    """Parse files with FIELDTERMINATOR='+|' and ROWTERMINATOR='&|\\n'.
-
-    Used for tables with XML columns (Person, Store) where tab appears inside values.
-    """
-    raw = path.read_bytes().decode("utf-8-sig")
-    rows = []
-    for line in raw.split("&|\n"):
-        line = line.strip()
-        if not line:
-            continue
-        parts = line.split("+|")
-        if len(parts) == len(columns):
-            rows.append(dict(zip(columns, parts)))
-        elif len(parts) > len(columns):
-            # Extra fields (e.g. trailing delimiter) — truncate
-            rows.append(dict(zip(columns, parts[: len(columns)])))
-    df = pd.DataFrame(rows, columns=columns)
-    # Replace empty strings with NaN to match tab-loader behaviour
-    return df.replace("", pd.NA)
+DATASET_START = date(2022, 1, 1)
+DATASET_END   = date(2024, 12, 31)
+NUM_CUSTOMERS = 200
 
 
-def build_db(csv_dir: Path, output: Path) -> None:
-    print(f"CSV source : {csv_dir}")
+def _random_date(start: date, end: date, rng: random.Random) -> date:
+    delta = (end - start).days
+    return start + timedelta(days=rng.randint(0, delta))
+
+
+def generate(seed: int = 42) -> tuple[list[dict], list[dict]]:
+    rng = random.Random(seed)
+    subscriptions: list[dict] = []
+    events: list[dict] = []
+    event_counter = 1
+
+    for i in range(1, NUM_CUSTOMERS + 1):
+        customer_id = f"C{i:04d}"
+        plan_name, mrr = rng.choice(PLANS)
+        start_date = _random_date(DATASET_START, date(2024, 6, 30), rng)
+
+        if rng.random() < 0.30:  # ~30% churn rate
+            max_end = min(start_date + timedelta(days=730), DATASET_END)
+            earliest_end = start_date + timedelta(days=30)
+            end_date = _random_date(
+                earliest_end if earliest_end < max_end else max_end,
+                max_end,
+                rng,
+            )
+            status = "churned"
+
+            # cancel_requested event a few days before end_date
+            days_before = rng.randint(5, 20)
+            event_date = end_date - timedelta(days=days_before)
+            if event_date >= start_date:
+                events.append({
+                    "event_id":    f"E{event_counter:05d}",
+                    "customer_id": customer_id,
+                    "event_type":  "cancel_requested",
+                    "event_date":  event_date.isoformat(),
+                    "metadata":    f"reason={rng.choice(CHURN_REASONS)}",
+                })
+                event_counter += 1
+        else:
+            end_date = None
+            status = "active"
+
+            # ~15% of active customers have a plan change event
+            if rng.random() < 0.15:
+                paths = list(UPGRADE_PATHS + DOWNGRADE_PATHS)
+                rng.shuffle(paths)
+                for from_plan, to_plan in paths:
+                    if from_plan == plan_name:
+                        earliest_event = start_date + timedelta(days=30)
+                        if earliest_event < DATASET_END:
+                            event_date = _random_date(earliest_event, DATASET_END, rng)
+                            is_upgrade = (from_plan, to_plan) in UPGRADE_PATHS
+                            events.append({
+                                "event_id":    f"E{event_counter:05d}",
+                                "customer_id": customer_id,
+                                "event_type":  "plan_upgrade" if is_upgrade else "plan_downgrade",
+                                "event_date":  event_date.isoformat(),
+                                "metadata":    f"from={from_plan}&to={to_plan}",
+                            })
+                            event_counter += 1
+                        break
+
+            # ~5% of active customers have a payment failure
+            if rng.random() < 0.05:
+                earliest_event = start_date + timedelta(days=14)
+                if earliest_event < DATASET_END:
+                    event_date = _random_date(earliest_event, DATASET_END, rng)
+                    events.append({
+                        "event_id":    f"E{event_counter:05d}",
+                        "customer_id": customer_id,
+                        "event_type":  "payment_failed",
+                        "event_date":  event_date.isoformat(),
+                        "metadata":    "attempt=1",
+                    })
+                    event_counter += 1
+
+        subscriptions.append({
+            "customer_id": customer_id,
+            "plan":        plan_name,
+            "mrr":         mrr,
+            "start_date":  start_date.isoformat(),
+            "end_date":    end_date.isoformat() if end_date else None,
+            "status":      status,
+        })
+
+    return subscriptions, events
+
+
+_DDL = """
+CREATE TABLE subscriptions (
+    id          INTEGER  PRIMARY KEY AUTOINCREMENT,
+    customer_id TEXT     NOT NULL,
+    plan        TEXT     NOT NULL,
+    mrr         REAL     NOT NULL,
+    start_date  TEXT     NOT NULL,
+    end_date    TEXT     NULL,
+    status      TEXT     NOT NULL CHECK(status IN ('active', 'churned')),
+    created_at  TEXT     NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT     NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_sub_customer_id     ON subscriptions (customer_id);
+CREATE INDEX idx_sub_status_end_date ON subscriptions (status, end_date);
+
+CREATE TABLE events (
+    id          INTEGER  PRIMARY KEY AUTOINCREMENT,
+    event_id    TEXT     NOT NULL UNIQUE,
+    customer_id TEXT     NOT NULL,
+    event_type  TEXT     NOT NULL,
+    event_date  TEXT     NOT NULL,
+    metadata    TEXT     NULL,
+    created_at  TEXT     NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_events_customer_id ON events (customer_id);
+CREATE INDEX idx_events_event_date  ON events (event_date);
+"""
+
+
+def build_db(output: Path, seed: int = 42) -> None:
     print(f"Output DB  : {output}")
-
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists():
         output.unlink()
 
+    subscriptions, events = generate(seed)
+
     conn = sqlite3.connect(output)
+    try:
+        conn.executescript(_DDL)
+        conn.executemany(
+            "INSERT INTO subscriptions (customer_id, plan, mrr, start_date, end_date, status) "
+            "VALUES (:customer_id, :plan, :mrr, :start_date, :end_date, :status)",
+            subscriptions,
+        )
+        conn.executemany(
+            "INSERT INTO events (event_id, customer_id, event_type, event_date, metadata) "
+            "VALUES (:event_id, :customer_id, :event_type, :event_date, :metadata)",
+            events,
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
-    for table_name, (csv_file, delim, columns) in TABLES.items():
-        csv_path = csv_dir / csv_file
-        if not csv_path.exists():
-            print(f"  SKIP {csv_file} (not found)")
-            continue
-
-        print(f"Loading {csv_file} -> {table_name} ...", end=" ", flush=True)
-        df = _load_tab(csv_path, columns) if delim == TAB else _load_plus(csv_path, columns)
-        df.to_sql(table_name, conn, if_exists="replace", index=False)
-        print(f"{len(df):,} rows")
-
-    cur = conn.cursor()
-    for idx_sql in INDEXES:
-        cur.execute(idx_sql)
-
-    conn.commit()
-    conn.close()
+    print(f"Inserted {len(subscriptions)} subscriptions, {len(events)} events.")
     print("Done.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--csv-dir", default=str(DEFAULT_CSV_DIR))
-    parser.add_argument("--output",  default=str(DEFAULT_OUTPUT))
+    parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
+    parser.add_argument("--seed",   type=int, default=42)
     args = parser.parse_args()
-    build_db(Path(args.csv_dir), Path(args.output))
+    build_db(Path(args.output), args.seed)

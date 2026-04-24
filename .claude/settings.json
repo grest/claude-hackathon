@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(python db/init_db.py)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(git -C /c/Repo/claude-hackathon log --name-status --oneline)",
+      "Bash(git -C /c/Repo/claude-hackathon show 7bb8c60:db/schema.sql)",
+      "Bash(git -C /c/Repo/claude-hackathon show ef5bd8a:db/schema.sql)",
+      "Bash(git -C /c/Repo/claude-hackathon show ef5bd8a:db/seed.sql)",
+      "Bash(git -C /c/Repo/claude-hackathon show ef5bd8a:docker-compose.yml)",
+      "Bash(git -C /c/Repo/claude-hackathon show ef5bd8a:db/migrations/versions/001_initial_schema.py)"
     ]
   }
 }

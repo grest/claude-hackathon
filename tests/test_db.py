@@ -1,25 +1,17 @@
 """
-Integration tests for engine/db.py against AdventureWorks SQLite.
-Skipped automatically if the AdventureWorks CSV directory is not present.
+Integration tests for engine/db.py against the synthetic SaaS SQLite database.
 """
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-CSV_DIR = Path("data/AdventureWorks-oltp-install-script")
-
-pytestmark = pytest.mark.skipif(
-    not CSV_DIR.exists(),
-    reason="AdventureWorks CSV files not found — run from repo root",
-)
-
 
 @pytest.fixture(scope="module")
 def db_path(tmp_path_factory):
     from db.init_db import build_db
-    out = tmp_path_factory.mktemp("aw") / "test.db"
-    build_db(CSV_DIR, out)
+    out = tmp_path_factory.mktemp("saas") / "test.db"
+    build_db(out, seed=42)
     return str(out)
 
 
@@ -66,6 +58,19 @@ def test_start_date_before_end_date(db_path):
     df = fetch_subscriptions(db_path)
     churned = df[df["status"] == "churned"]
     assert (churned["start_date"] <= churned["end_date"]).all()
+
+
+def test_known_plan_values(db_path):
+    from engine.db import fetch_subscriptions
+    df = fetch_subscriptions(db_path)
+    valid_plans = {"starter", "pro", "business", "enterprise"}
+    assert set(df["plan"].unique()).issubset(valid_plans)
+
+
+def test_200_customers(db_path):
+    from engine.db import fetch_subscriptions
+    df = fetch_subscriptions(db_path)
+    assert len(df) == 200
 
 
 def test_api_endpoint_returns_db_source(db_path):

@@ -5,3 +5,12 @@ E003,C006,cancel_requested,2024-02-20,reason=unused
 E004,C008,cancel_requested,2024-01-25,reason=price
 E005,C001,plan_upgrade,2024-02-01,from=starter&to=pro
 E006,C003,plan_upgrade,2024-01-15,from=pro&to=enterprise
+E007,C010,cancel_requested,2024-05-10,reason=budget_cut
+E008,C012,cancel_requested,2024-01-10,reason=competitor
+E009,C014,cancel_requested,2024-06-08,reason=price
+E010,C016,cancel_requested,2024-03-20,reason=too_complex
+E011,C018,cancel_requested,2024-02-20,reason=unused
+E012,C020,cancel_requested,2024-01-25,reason=switching_tools
+E013,C009,plan_upgrade,2024-01-10,from=pro&to=business
+E014,C015,plan_upgrade,2023-10-01,from=starter&to=pro
+E015,C017,payment_failed,2024-03-05,attempt=1
