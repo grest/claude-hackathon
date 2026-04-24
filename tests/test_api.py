@@ -10,6 +10,12 @@ DATA_CSV = str(Path(__file__).parent.parent / "data" / "sample_subscriptions.csv
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def clear_database_url(monkeypatch):
+    """Guarantee DATABASE_URL is absent so all tests use the CSV fallback."""
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+
 def test_health():
     r = client.get("/health")
     assert r.status_code == 200
