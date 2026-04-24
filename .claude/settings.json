@@ -12,7 +12,8 @@
       "Bash(git -C c:/Repo/claude-hackathon status)",
       "Bash(git -C c:/Repo/claude-hackathon remote -v)",
       "Bash(git -C c:/Repo/claude-hackathon pull --no-rebase)",
-      "Bash(git -C c:/Repo/claude-hackathon push)"
+      "Bash(git -C c:/Repo/claude-hackathon push)",
+      "Bash(git -C c:/Repo/claude-hackathon log --oneline -5)"
     ]
   }
 }

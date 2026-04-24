@@ -5,7 +5,8 @@
       "Bash(.venv/Scripts/pip install *)",
       "Bash(.venv/Scripts/streamlit run *)",
       "PowerShell(& \"C:\\\\Repo\\\\claude-hackathon\\\\.venv\\\\Scripts\\\\streamlit.exe\" run \"C:\\\\Repo\\\\claude-hackathon\\\\dashboard.py\" 2>&1 &)",
-      "PowerShell(Start-Process -FilePath \"C:\\\\Repo\\\\claude-hackathon\\\\.venv\\\\Scripts\\\\streamlit.exe\" -ArgumentList \"run\", \"C:\\\\Repo\\\\claude-hackathon\\\\dashboard.py\" -NoNewWindow -PassThru)"
+      "PowerShell(Start-Process -FilePath \"C:\\\\Repo\\\\claude-hackathon\\\\.venv\\\\Scripts\\\\streamlit.exe\" -ArgumentList \"run\", \"C:\\\\Repo\\\\claude-hackathon\\\\dashboard.py\" -NoNewWindow -PassThru)",
+      "PowerShell(netstat *)"
     ]
   }
 }
