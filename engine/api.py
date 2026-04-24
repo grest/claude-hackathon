@@ -79,6 +79,55 @@ def list_available_metrics(version: str = Query(default="v1")):
     ]
 
 
+@app.get("/metrics/summary", response_model=list[MetricResult])
+def metrics_summary(
+    as_of: date = Query(default_factory=date.today),
+    version: str = Query(default="v1"),
+    csv_path: str = Query(default=str(DEFAULT_CSV)),
+):
+    """Return all v1 metrics in a single call."""
+    from definitions.registry import list_metrics as _list_metrics
+
+    definitions = _list_metrics(version=version)
+
+    database_path = os.environ.get("DATABASE_PATH", "").strip()
+
+    if database_path:
+        try:
+            df = load_subscriptions_from_db(database_path)
+            source: Literal["db", "csv"] = "db"
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"DB load failed: {exc}") from exc
+    else:
+        try:
+            df = load_subscriptions(csv_path)
+            source = "csv"
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=422, detail=f"CSV not found: {csv_path}") from exc
+
+    results = []
+    for definition in definitions:
+        missing = [c for c in definition.required_columns if c not in df.columns]
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Data source missing required columns for {definition.name}: {missing}",
+            )
+        value = compute(definition, df, as_of)
+        results.append(
+            MetricResult(
+                metric=definition.name,
+                version=definition.version,
+                as_of=as_of,
+                value=value,
+                description=definition.description,
+                source=source,
+            )
+        )
+
+    return results
+
+
 @app.get("/metrics/{metric_name}", response_model=MetricResult)
 def calculate_metric(
     metric_name: str,

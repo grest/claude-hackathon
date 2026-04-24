@@ -36,7 +36,7 @@ DOWNGRADE_PATHS = [
 
 DATASET_START = date(2022, 1, 1)
 DATASET_END   = date(2024, 12, 31)
-NUM_CUSTOMERS = 200
+NUM_CUSTOMERS = 1000
 
 
 def _random_date(start: date, end: date, rng: random.Random) -> date:

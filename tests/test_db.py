@@ -67,10 +67,10 @@ def test_known_plan_values(db_path):
     assert set(df["plan"].unique()).issubset(valid_plans)
 
 
-def test_200_customers(db_path):
+def test_1000_customers(db_path):
     from engine.db import fetch_subscriptions
     df = fetch_subscriptions(db_path)
-    assert len(df) == 200
+    assert len(df) == 1000
 
 
 def test_api_endpoint_returns_db_source(db_path):
