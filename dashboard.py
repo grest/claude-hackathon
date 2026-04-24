@@ -84,18 +84,26 @@ with st.sidebar:
 
     _max_date = _max_dataset_date(str(db_path)) if db_path.exists() else date(2024, 12, 31)
 
+    if st.button("📊 Jump to reconciliation window", use_container_width=True):
+        st.session_state["_end_date"] = date(2024, 11, 30)
+        st.session_state["_period"] = "30 days"
+        st.rerun()
+
+    _PERIOD_OPTIONS = ["7 days", "30 days", "90 days", "Custom"]
     period_choice = st.radio(
         "Lookback",
-        ["7 days", "30 days", "90 days", "Custom"],
-        index=1,
+        _PERIOD_OPTIONS,
+        index=_PERIOD_OPTIONS.index(st.session_state.get("_period", "30 days")),
         horizontal=True,
     )
+    st.session_state["_period"] = period_choice
 
     end_date: date = st.date_input(
         "End date",
-        value=_max_date,
+        value=st.session_state.get("_end_date", _max_date),
         max_value=date.today(),
     )
+    st.session_state["_end_date"] = end_date
 
     if period_choice == "Custom":
         start_date: date = st.date_input(
@@ -201,6 +209,59 @@ plan_agg = (
     .reset_index()
 )
 
+# EC customers active at as_of — mark their plan bars
+_ec_active_by_plan = (
+    df[
+        df["customer_id"].str.startswith("EC")
+        & (df["start_date"] <= as_of_ts)
+        & (df["end_date"].isna() | (df["end_date"] > as_of_ts))
+        & df["plan"].isin(plan_order)
+    ]
+    .groupby("plan")["customer_id"].nunique()
+    .to_dict()
+)
+# EC churns inside the Nov-2024 reconciliation window — show impact per plan
+_ec_nov_churns_by_plan = (
+    df[
+        df["customer_id"].str.startswith("EC")
+        & (df["status"] == "churned")
+        & (df["end_date"] >= pd.Timestamp("2024-11-01"))
+        & (df["end_date"] <= pd.Timestamp("2024-11-30"))
+        & df["plan"].isin(plan_order)
+    ]
+    .groupby("plan")["customer_id"].count()
+    .to_dict()
+)
+
+def _add_ec_bar_annotations(fig, plan_agg_df: pd.DataFrame, y_col: str) -> None:
+    """Add red edge-case markers above bars that contain EC customers."""
+    for _, row in plan_agg_df.iterrows():
+        plan = row["plan"]
+        n_active = _ec_active_by_plan.get(plan, 0)
+        n_churns = _ec_nov_churns_by_plan.get(plan, 0)
+        if n_active == 0 and n_churns == 0:
+            continue
+        parts = []
+        if n_active:
+            parts.append(f"★ incl. {n_active} EC")
+        if n_churns:
+            parts.append(f"⚠ {n_churns} EC churned (Nov)")
+        y_val = row[y_col] if pd.notna(row[y_col]) else 0
+        fig.add_annotation(
+            x=plan, y=y_val,
+            text="<br>".join(parts),
+            showarrow=True,
+            arrowhead=2,
+            arrowcolor="#d62728",
+            arrowwidth=1,
+            ax=0, ay=-36,
+            font=dict(color="#d62728", size=9),
+            bgcolor="rgba(255,235,235,0.9)",
+            bordercolor="#d62728",
+            borderwidth=1,
+            align="center",
+        )
+
 pb_col1, pb_col2 = st.columns(2)
 
 with pb_col1:
@@ -213,6 +274,7 @@ with pb_col1:
         text_auto=True,
     )
     fig_count.update_layout(showlegend=False, height=350)
+    _add_ec_bar_annotations(fig_count, plan_agg, "active_count")
     st.plotly_chart(fig_count, use_container_width=True)
 
 with pb_col2:
@@ -225,6 +287,7 @@ with pb_col2:
         text_auto=".2s",
     )
     fig_mrr.update_layout(showlegend=False, height=350)
+    _add_ec_bar_annotations(fig_mrr, plan_agg, "total_mrr")
     st.plotly_chart(fig_mrr, use_container_width=True)
 
 st.divider()
@@ -251,6 +314,37 @@ fig_line = px.line(
     markers=True,
 )
 fig_line.update_layout(height=380)
+
+# Mark the edge-case reconciliation window if it falls inside the chart range
+_ec_month = "2024-11"
+if _ec_month in churn_ts["month"].values:
+    _ec_rate = churn_ts.loc[churn_ts["month"] == _ec_month, "churn_rate"].iloc[0]
+    _n_ec = len(
+        df[
+            df["customer_id"].str.startswith("EC")
+            & (df["status"] == "churned")
+            & (df["end_date"] >= pd.Timestamp("2024-11-01"))
+            & (df["end_date"] <= pd.Timestamp("2024-11-30"))
+        ]
+    )
+    fig_line.add_vline(
+        x=_ec_month, line_dash="dot", line_color="#d62728", line_width=1.5, opacity=0.6,
+    )
+    fig_line.add_annotation(
+        x=_ec_month, y=_ec_rate,
+        text=f"⚠ edge case window<br>{_n_ec} EC churns injected",
+        showarrow=True,
+        arrowhead=2,
+        arrowcolor="#d62728",
+        arrowwidth=1.5,
+        ax=90, ay=-45,
+        font=dict(color="#d62728", size=10),
+        bgcolor="rgba(255,235,235,0.9)",
+        bordercolor="#d62728",
+        borderwidth=1,
+        align="left",
+    )
+
 st.plotly_chart(fig_line, use_container_width=True)
 
 st.divider()
@@ -276,9 +370,10 @@ st.dataframe(
 
 st.divider()
 st.subheader("Reconciliation Table — Edge Cases × Definitions")
-st.caption(
-    "Each row is a hand-crafted edge case that triggers a disagreement between definitions. "
-    "Columns show what each definition returns for a 30-day window ending 2024-11-30."
+st.info(
+    "This table is **always pinned to 2024-11-01 → 2024-11-30** regardless of the sidebar "
+    "selection — the 15 edge cases (EC001–EC015) were designed for this window. "
+    "Use **📊 Jump to reconciliation window** in the sidebar to align the KPIs above with this view."
 )
 
 RECON_AS_OF = date(2024, 11, 30)
@@ -314,23 +409,23 @@ else:
         "Load a dataset that includes these IDs to see the reconciliation table."
     )
 
-with st.expander("Why these edge cases matter"):
+with st.expander("What each row demonstrates (window: 2024-11-01 → 2024-11-30)"):
     st.markdown("""
-| Customer | Scenario | What disagrees |
-|----------|----------|----------------|
-| EC001 | Started and churned within the same 30-day window | `customer_churn_rate` counts it; `logo_churn_conservative` excludes it from denominator |
-| EC002 | Unknown plan tier with non-zero MRR ($149) | Revenue definitions disagree on how to handle unlabeled revenue |
-| EC003 | Churned on exact period boundary (Oct 31) | Boundary-inclusive vs. exclusive definitions split here |
-| EC004 | Long-lived enterprise account — high MRR impact | Revenue churn vs. logo churn magnitude diverges sharply |
-| EC005 | Active customer with plan downgrade event | `downgrade_inclusive_churn` counts this; others don't |
-| EC006 | Active customer with plan upgrade | `net_revenue_retention` benefits; gross churn metrics ignore it |
-| EC007 | 7-day tenure (trial-like) churn | Some definitions exclude sub-30-day accounts from denominator |
-| EC008 | EU timezone boundary (churned Dec 31 vs Jan 1) | Date-boundary definitions split depending on UTC vs local time |
-| EC009 | Retry-storm duplicate cancel event | Naive event-counting definitions double-count this churn |
-| EC010 | Reactivated customer (churned then came back) | Definitions disagree on whether this counts as churn at all |
-| EC011 | Zero-MRR free-tier account churned | Logo churn counts it; all revenue churn definitions ignore it |
-| EC012 | Mid-month start and churn (Nov 16–30) | Partial-month denominator treatment varies |
-| EC013 | Churned 1 day outside the window (Oct 30) | Boundary strictness — should be 0 for all definitions |
-| EC014 | Paused/suspended account churned | Some definitions treat pauses as non-churn |
-| EC015 | Unknown plan + churned | Worst case for revenue definitions (unknown MRR basis) |
+| Customer | Scenario | Expected values | What it shows |
+|----------|----------|-----------------|---------------|
+| EC001 | Started exactly on period boundary (Oct 31) | ccr=**100%** · logo_cons=**0%** | `customer_churn_rate` uses `≤ period_start`; `logo_churn_conservative` uses `< period_start` — one character difference, different answer |
+| EC002 | Unknown plan, MRR=$149, churned Nov 15 | ccr=rcr=100% · nrr=0% | All definitions include unknown-plan revenue equally; the business question is whether to exclude it before calculating |
+| EC003 | Churned exactly on Oct 31 (= period start) | All churn=**100%** · nrr=0% | Confirms the window start boundary is inclusive in every definition |
+| EC004 | Long-tenure enterprise ($499) churned Nov 20 | All churn=**100%** · nrr=0% | All definitions agree — the disagreement shows up in the dollar *amount*, not the rate |
+| EC005 | Active customer, plan downgrade event in window | All churn=**0%** · nrr=**100%** | NRR sees full retention (active = no lost MRR); downgrade MRR loss not modeled in current engine |
+| EC006 | Active customer, plan upgrade event in window | All churn=**0%** · nrr=**100%** | NRR would show >100% in a full model (expansion MRR); current engine caps at 100% |
+| EC007 | 7-day tenure (Oct 25→Nov 1) — trial-like | All churn=**100%** · nrr=0% | All 5 definitions count this as 100% churn; none has a minimum-tenure exclusion |
+| EC008 | Churned Nov 30 (UTC) = Dec 1 Europe/Berlin | All churn=**100%** · nrr=0% | Our system counts it (UTC date = Nov 30 is in-window); a timezone-aware system would move it to Dec 1 and produce 0% |
+| EC009 | Duplicate cancel events (retry storm) | All churn=**100%** · nrr=0% | Subscription-level metrics are unaffected; an event-count-based definition would double-count the cancellation |
+| EC010 | Reactivated: churned Jun 2023, rejoined Jul 2023 | All churn=**0%** · nrr=**100%** | No churn in Nov 2024 window; the prior churn (Jun 2023) is outside — definitions that use ever-churned status would disagree |
+| EC011 | Free-tier ($0 MRR) churned Nov 5 | ccr=logo_cons=**100%** · rcr=nrr=di=**0%** | **Logo churn ≠ revenue churn** — a customer left (logo says 100%) but no revenue was lost (revenue says 0%) |
+| EC012 | Started Oct 16, churned Nov 30 | All churn=**100%** · nrr=0% | All definitions agree; some BI tools would pro-rate the $249 MRR for the 15-day pre-window tenure |
+| EC013 | Churned Oct 30 — 1 day before window | All churn=**0%** · nrr=**100%** | Confirms window boundary is exclusive on the far side; NRR shows full retention (starting MRR preserved) |
+| EC014 | Paused account treated as churned Nov 25 | All churn=**100%** · nrr=0% | All definitions agree; a real system with a `paused` status would exclude this from churn |
+| EC015 | Unknown plan, $0 MRR, churned Nov 18 | ccr=logo_cons=**100%** · rcr=nrr=di=**0%** | Same logo vs. revenue split as EC011; worst case for revenue definitions (no MRR basis at all) |
 """)

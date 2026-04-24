@@ -158,10 +158,10 @@ def generate(seed: int = 42) -> tuple[list[dict], list[dict]]:
     # --- Fifteen hard-coded edge-case rows ---
     # These are referenced by the dashboard reconciliation table by customer_id.
     EDGE_CASES = [
-        # EC001: started AND churned within the same 30-day window → denominator disagreement
-        {"customer_id": "EC001", "plan": "pro",        "mrr": 99.00,  "start_date": "2024-11-05", "end_date": "2024-11-28", "status": "churned"},
-        # EC002: unknown plan tier with non-zero MRR → data quality / revenue calc disagreement
-        {"customer_id": "EC002", "plan": "unknown",    "mrr": 149.00, "start_date": "2023-03-01", "end_date": "2024-01-15", "status": "churned"},
+        # EC001: start_date = period_start boundary → customer_churn_rate (<=) counts it, logo_churn_conservative (<) excludes it
+        {"customer_id": "EC001", "plan": "pro",        "mrr": 99.00,  "start_date": "2024-10-31", "end_date": "2024-11-28", "status": "churned"},
+        # EC002: unknown plan with explicit MRR ($149) churned in window — all definitions include it equally
+        {"customer_id": "EC002", "plan": "unknown",    "mrr": 149.00, "start_date": "2023-03-01", "end_date": "2024-11-15", "status": "churned"},
         # EC003: churned on exact period boundary (end_date == period_start)
         {"customer_id": "EC003", "plan": "starter",    "mrr": 29.00,  "start_date": "2023-10-01", "end_date": "2024-10-31", "status": "churned"},
         # EC004: long-lived enterprise account churned in window → high MRR impact
@@ -170,10 +170,10 @@ def generate(seed: int = 42) -> tuple[list[dict], list[dict]]:
         {"customer_id": "EC005", "plan": "pro",        "mrr": 99.00,  "start_date": "2022-06-01", "end_date": None,         "status": "active"},
         # EC006: active customer with plan_upgrade event → offsets net revenue churn
         {"customer_id": "EC006", "plan": "enterprise", "mrr": 499.00, "start_date": "2023-01-01", "end_date": None,         "status": "active"},
-        # EC007: very short tenure (7 days) churn → trial-like behaviour
-        {"customer_id": "EC007", "plan": "starter",    "mrr": 29.00,  "start_date": "2024-11-15", "end_date": "2024-11-22", "status": "churned"},
-        # EC008: EU timezone boundary case (churned Dec 31 after timezone shift)
-        {"customer_id": "EC008", "plan": "business",   "mrr": 249.00, "start_date": "2023-08-01", "end_date": "2023-12-31", "status": "churned"},
+        # EC007: 7-day tenure churn — all definitions count it; no min-tenure filter in any definition
+        {"customer_id": "EC007", "plan": "starter",    "mrr": 29.00,  "start_date": "2024-10-25", "end_date": "2024-11-01", "status": "churned"},
+        # EC008: churned on exact window end (Nov 30 UTC = Dec 1 Europe/Berlin — timezone shifts it out)
+        {"customer_id": "EC008", "plan": "business",   "mrr": 249.00, "start_date": "2023-08-01", "end_date": "2024-11-30", "status": "churned"},
         # EC009: retry-storm customer (will have duplicate cancel event)
         {"customer_id": "EC009", "plan": "pro",        "mrr": 99.00,  "start_date": "2024-09-01", "end_date": "2024-11-10", "status": "churned"},
         # EC010: reactivated — churned then started a new subscription (two rows same customer)
@@ -181,8 +181,8 @@ def generate(seed: int = 42) -> tuple[list[dict], list[dict]]:
         {"customer_id": "EC010", "plan": "pro",        "mrr": 99.00,  "start_date": "2023-07-25", "end_date": None,         "status": "active"},
         # EC011: zero-MRR free-tier account that churned → logo churn yes, revenue churn no
         {"customer_id": "EC011", "plan": "starter",    "mrr": 0.00,   "start_date": "2024-08-01", "end_date": "2024-11-05", "status": "churned"},
-        # EC012: mid-month start and churn — denominator depends on whether partial months count
-        {"customer_id": "EC012", "plan": "business",   "mrr": 249.00, "start_date": "2024-11-16", "end_date": "2024-11-30", "status": "churned"},
+        # EC012: mid-October start (Oct 16), churned end of window — all agree; partial-month MRR not pro-rated
+        {"customer_id": "EC012", "plan": "business",   "mrr": 249.00, "start_date": "2024-10-16", "end_date": "2024-11-30", "status": "churned"},
         # EC013: churned 1 day outside the window (should NOT appear in 30-day window ending 2024-11-30)
         {"customer_id": "EC013", "plan": "pro",        "mrr": 99.00,  "start_date": "2023-05-01", "end_date": "2024-10-30", "status": "churned"},
         # EC014: paused account — status churned but will be re-examined by some definitions
@@ -194,13 +194,13 @@ def generate(seed: int = 42) -> tuple[list[dict], list[dict]]:
     EDGE_CASE_EVENTS = [
         {"event_id": "ECE001",    "customer_id": "EC001", "event_type": "cancel_requested", "event_date": "2024-11-25", "metadata": "reason=price"},
         {"event_id": "ECE001_r1", "customer_id": "EC001", "event_type": "cancel_requested", "event_date": "2024-11-25", "metadata": "reason=price&retry=1"},  # retry storm
-        {"event_id": "ECE002",    "customer_id": "EC002", "event_type": "cancel_requested", "event_date": "2024-01-10", "metadata": "reason=competitor"},
+        {"event_id": "ECE002",    "customer_id": "EC002", "event_type": "cancel_requested", "event_date": "2024-11-10", "metadata": "reason=competitor"},
         {"event_id": "ECE003",    "customer_id": "EC003", "event_type": "cancel_requested", "event_date": "2024-10-28", "metadata": "reason=budget_cut"},
         {"event_id": "ECE004",    "customer_id": "EC004", "event_type": "cancel_requested", "event_date": "2024-11-15", "metadata": "reason=switching_tools"},
         {"event_id": "ECE005",    "customer_id": "EC005", "event_type": "plan_downgrade",   "event_date": "2024-11-10", "metadata": "from=business&to=pro"},
         {"event_id": "ECE006",    "customer_id": "EC006", "event_type": "plan_upgrade",     "event_date": "2024-11-05", "metadata": "from=business&to=enterprise"},
-        {"event_id": "ECE007",    "customer_id": "EC007", "event_type": "cancel_requested", "event_date": "2024-11-20", "metadata": "reason=price&note=trial_like"},
-        {"event_id": "ECE008",    "customer_id": "EC008", "event_type": "cancel_requested", "event_date": "2023-12-31", "metadata": "reason=price&tz=Europe/Berlin"},
+        {"event_id": "ECE007",    "customer_id": "EC007", "event_type": "cancel_requested", "event_date": "2024-10-30", "metadata": "reason=price&note=trial_like"},
+        {"event_id": "ECE008",    "customer_id": "EC008", "event_type": "cancel_requested", "event_date": "2024-11-28", "metadata": "reason=price&tz=Europe/Berlin"},
         {"event_id": "ECE009",    "customer_id": "EC009", "event_type": "cancel_requested", "event_date": "2024-11-08", "metadata": "reason=unused"},
         {"event_id": "ECE009_r1", "customer_id": "EC009", "event_type": "cancel_requested", "event_date": "2024-11-08", "metadata": "reason=unused&retry=1"},  # retry storm
         {"event_id": "ECE010a",   "customer_id": "EC010", "event_type": "cancel_requested", "event_date": "2023-06-25", "metadata": "reason=price"},
